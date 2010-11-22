@@ -1,0 +1,116 @@
+;; find-file-suggest.el --- Adaptive filename suggestions based on
+;;                          user-defined file indexes.
+;;   
+;; Author: Christian Jauvin <cjauvin@gmail.com>
+;; Created: December 2008
+;; Last updated: 2010-06-08
+;;
+;; This extension performs filename matching against an index of files
+;; living below a user-specified directory. The 'find-file-suggest'
+;; function is meant to be invoked in a similar way to the 'find-file'
+;; built-in function. The difference is that the current buffer will
+;; be replaced by a new one in which indexed filename suggestions
+;; matching the "query" (from the minibuffer) are presented.  These
+;; suggestions are easily navigated with the mouse or up/down arrows,
+;; and are also dynamically recomputed whenever the query minibuffer
+;; changes (as the user types a longer filename, for instance).
+;;
+;; The system is somewhat adaptive because the suggested files are
+;; sorted in decreasing order of the number of times that they've been
+;; visited (in the current session), thus making the ones that are
+;; used the most often percolate to the top.
+;;
+;; Multiple file indexes can be created, with different
+;; inclusion/exclusion rules, based at different directory points, and
+;; it's easy to switch between them, as needed.
+;;
+;; One limitation with this mechanism is that whenever a file is
+;; created, the corresponding file index has to be recreated
+;; (refreshed) explicitly. As for my own style of work, I find that
+;; it's not a serious limitation however.
+;;
+;; To create a file index, only one function call is needed
+;; (interactively, or in .emacs). One example would be:
+;;
+;; (ffs-create-file-index "project1" "/base/dir" "\\.py$\\|\\.js$" "\\.svn$")
+;;
+;; (or alternatively: M-x ffs-create-file index) which would create a
+;; file index named "project1", over all the Python and JavaScript
+;; files in /base/dir, excluding whatever is found in .svn subfolders.
+;;
+;; A file index for a second project could also be created:
+;;
+;; (ffs-create-file-index "project2" "/other/dir" "" "")
+;;
+;; This one would contain all the files (no inclusion/exclusion rules)
+;; under /other/dir.
+;;
+;; To determine which file index will have the focus at the start, the
+;; default-directory (at Emacs load time) is used: if it is found to
+;; be a sub-directory of a given file index directory, then this file 
+;; index has the focus.
+;;
+;; To manually switch to another file index, use the interactive
+;; command with an existing file index name:
+;;
+;; M-x ffs-use-file-index
+;;
+;; To refresh a file index (if new files were created after Emacs has
+;; loaded, and you want them included in the corresponding file
+;; index):
+;;
+;; M-x ffs-refresh-file-index
+;;
+;; Note that this will not change the file index focus however. You
+;; can also know what is the current file index with:
+;;
+;; M-x ffs-which-file-index
+;;
+;; Note that to prevent a hang that would result from the unwanted
+;; creation of a file index based at the root of your drive, for
+;; instance, there is a limit of 1000 files (for each index) that can
+;; easily be adjusted with the ffs-max-file-index-size variable.
+;;
+;; I also added 'ffs-grep', a function that performs a basic grep on a
+;; file index, using the same interface.  Again this is a very crude
+;; and not terribly efficient function that is in no way meant to
+;; replace the real grep, as it simply tries to 'match-string' your
+;; query against the set of files, no more. If the index does not
+;; contain too many files however this can be an acceptable and quick
+;; way to check for the occurrence of a certain string, and visit the
+;; retrieved files, using the same mechanism.
+;;
+;; Once a file index is created and has the focus, invoking the
+;; 'find-file-suggest' or 'ffs-grep' functions will display a buffer
+;; with filename suggestions interactively matching your minibuffer
+;; query. You can navigate this buffer while still typing in the
+;; minibuffer, using the up/down arrow keys, or the mouse, and
+;; <return> or click to visit the highlighted file.
+;;
+;; Finally, you can also recall the last query by using either
+;; ffs-revert-last-query or ffs-grep-revert-last-query.
+;;
+;; To install:
+;;   (1) Put find-file-suggest.el somewhere in your load-path
+;;   (2) Add to your .emacs file:
+;;         (require 'find-file-suggest)
+;;   (3) Optionally, you can set shortcut keys, I use:
+;;         (global-set-key [(control x) (meta f)] 'find-file-suggest)
+;;         (global-set-key [(control x) (meta g)] 'ffs-grep)
+;;         (global-set-key "\C-xq" 'ffs-revert-last-query)
+;;         (global-set-key "\C-xw" 'ffs-grep-revert-last-query)
+;;   (4) Create at least one file index (interactively, or in .emacs):
+;;         (ffs-create-file-index <name> <base dir> <inclusion regexp> <exclusion regexp>)
+;;       This for instance would index all Python, JS and SQL source files under "/some/dir", 
+;;       while excluding all .svn subfolders:
+;;         (ffs-create-file-index "bla" "/some/dir/" "\\.py$\\|\\.js$\\|\\.sql$" "\\.svn")
+;;         
+;; Issues: This extension works best with Emacs >= 22. It works with
+;;    21 as well, but for some reason the highlighting mechanism does
+;;    not work properly, making it less visually pleasing.
+;;
+;; Acknoledgement: I would like to thank Justin Weiss: although
+;;    working quite differently, the code from his
+;;    fuzzy-find-in-project extension was my starting point for this
+;;    project.
+;;
